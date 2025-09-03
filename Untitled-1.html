@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Contador de Gestos Faciales</title>
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    body { background: #0f172a; }
+    .brand-grad { background: linear-gradient(135deg,#6d28d9,#0ea5e9); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .glass { backdrop-filter: blur(10px); background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); }
+    #video-wrap{ position:relative; aspect-ratio:16/9; border-radius:1rem; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+    #webcam,#overlay{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform: scaleX(-1); }
+    .status-dot{ width:.7rem; height:.7rem; border-radius:999px; display:inline-block; }
+    .range-value{ font-variant-numeric: tabular-nums; min-width:3ch; display:inline-block; }
+    .counter{ font-size:clamp(2rem,4vw,3rem); font-weight:800; line-height:1; }
+  </style>
+</head>
+<body class="text-white">
+  <nav class="navbar navbar-expand-lg navbar-dark" style="background: rgba(0,0,0,.35); border-bottom:1px solid rgba(255,255,255,.1)">
+    <div class="container">
+      <span class="navbar-brand fw-bold"><i class="bi bi-activity me-2"></i><span class="brand-grad">Gestos Faciales</span></span>
+      <div class="ms-auto">
+        <button id="btnStart" class="btn btn-primary me-2"><i class="bi bi-camera-video-fill me-1"></i> Iniciar cámara</button>
+        <button id="btnStop" class="btn btn-outline-light"><i class="bi bi-camera-video-off me-1"></i> Detener</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div id="video-wrap" class="glass">
+          <video id="webcam" playsinline muted></video>
+          <canvas id="overlay"></canvas>
+        </div>
+
+        <div class="d-flex align-items-center gap-3 mt-3">
+          <span class="status-dot bg-success" id="dot-status"></span>
+          <span id="txt-status">Cámara encendida</span>
+          <div class="form-check form-switch ms-auto">
+            <input class="form-check-input" type="checkbox" id="chkMesh" checked>
+            <label class="form-check-label" for="chkMesh">Mostrar malla</label>
+          </div>
+        </div>
+
+        <div id="hud" class="mt-2 small text-light opacity-75">blink: -- | mouth: -- | brow: --</div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="glass rounded-4 p-3 p-md-4">
+          <h5 class="mb-3"><i class="bi bi-sliders me-2"></i>Umbrales (ajústalos si hace falta)</h5>
+          <div class="mb-3">
+            <label class="form-label">Parpadeo <span class="range-value" id="val-blink">0.60</span></label>
+            <input type="range" min="0" max="1" step="0.01" value="0.60" class="form-range" id="thr-blink">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Abrir boca <span class="range-value" id="val-mouth">0.50</span></label>
+            <input type="range" min="0" max="1" step="0.01" value="0.50" class="form-range" id="thr-mouth">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Alzar cejas <span class="range-value" id="val-brow">0.40</span></label>
+            <input type="range" min="0" max="1" step="0.01" value="0.40" class="form-range" id="thr-brow">
+          </div>
+        </div>
+
+        <div class="row g-3 mt-3">
+          <div class="col-12 col-md-4">
+            <div class="glass rounded-4 p-3 text-center h-100">
+              <div class="text-uppercase small opacity-75">Parpadeos</div>
+              <div class="counter" id="count-blink">0</div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="glass rounded-4 p-3 text-center h-100">
+              <div class="text-uppercase small opacity-75">Boca abierta</div>
+              <div class="counter" id="count-mouth">0</div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="glass rounded-4 p-3 text-center h-100">
+              <div class="text-uppercase small opacity-75">Cejas arriba</div>
+              <div class="counter" id="count-brow">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Solo el botón de reset -->
+        <div class="d-flex gap-2 mt-3">
+          <button id="btnReset" class="btn btn-warning">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Reiniciar conteos
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080">
+    <div id="liveToast" class="toast text-bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header">
+        <strong class="me-auto">Notificación</strong>
+        <small>ahora</small>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+      </div>
+      <div class="toast-body" id="toast-body">...</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+
+
+
+
+
